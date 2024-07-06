@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<colorscheme>
+    <background>#F5F5F5</background>
+    <foreground>#333333</foreground>
+    <button_background>#7B68EE</button_background>
+    <button_foreground>#FFFFFF</button_foreground>
+    <button_active_background>#6A5ACD</button_active_background>
+    <frame_background>#E6E6FA</frame_background>
+    <label_foreground>#000000</label_foreground>
+</colorscheme>
