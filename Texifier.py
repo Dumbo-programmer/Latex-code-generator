@@ -229,8 +229,18 @@ class LatexGenerator:
         Generate and display the preview of the LaTeX code.
         """
         latex_code = self.input_area.get("1.0", tk.END).strip()
+        
+        if not latex_code:
+            messagebox.showwarning("Empty Input", "Please enter some LaTeX code.")
+            return
+        
+        # Encapsulate each line with $$ for multiline display
+        lines = latex_code.splitlines()
+        wrapped_lines = [f"${line.strip()}$" for line in lines]
+        wrapped_latex_code = "\n".join(wrapped_lines)
+
         try:
-            self.render_latex(latex_code)
+            self.render_latex(wrapped_latex_code)
         except Exception as e:
             print(f"Error: {e}")
             messagebox.showerror("Rendering Error", "Failed to render LaTeX code.")
@@ -240,25 +250,25 @@ class LatexGenerator:
         Render LaTeX code and display it as an image.
         """
         fig, ax = plt.subplots()
-        ax.text(0.5, 0.5, f"${latex_code}$", fontsize=12, ha='center', va='center')
+        ax.text(0.5, 0.5, latex_code, fontsize=12, ha='center', va='center')
         ax.axis('off')
-
+    
         buffer = BytesIO()
         fig.savefig(buffer, format='png')
         plt.close(fig)
         buffer.seek(0)
-
+    
         img = ImageTk.PhotoImage(data=buffer.read())
-
+    
         # Clear previous content
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
-
+    
         # Add the new preview image
         preview_label = ttk.Label(self.scrollable_frame, image=img)
         preview_label.image = img
         preview_label.pack(padx=5, pady=5)
-
+    
 if __name__ == "__main__":
     root = tk.Tk()
     app = LatexGenerator(root)
