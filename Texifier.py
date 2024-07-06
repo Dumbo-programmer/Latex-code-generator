@@ -5,6 +5,9 @@ from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 from io import BytesIO
 from PIL import Image, ImageTk
+import subprocess
+from pdf2image import convert_from_path
+import os
 
 class LatexGenerator:
     def __init__(self, root):
@@ -249,26 +252,60 @@ class LatexGenerator:
         """
         Render LaTeX code and display it as an image.
         """
-        fig, ax = plt.subplots()
-        ax.text(0.5, 0.5, latex_code, fontsize=12, ha='center', va='center')
-        ax.axis('off')
-    
-        buffer = BytesIO()
-        fig.savefig(buffer, format='png')
-        plt.close(fig)
-        buffer.seek(0)
-    
-        img = ImageTk.PhotoImage(data=buffer.read())
-    
         # Clear previous content
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
-    
-        # Add the new preview image
-        preview_label = ttk.Label(self.scrollable_frame, image=img)
-        preview_label.image = img
-        preview_label.pack(padx=5, pady=5)
-    
+
+        # Check if the code contains a table environment
+        if latex_code.strip().startswith("\\begin{tabular}") and latex_code.strip().endswith("\\end{tabular}"):
+            # Create a temporary LaTeX file with the provided content
+            temp_tex_filename = "temp.tex"
+            with open(temp_tex_filename, 'w') as f:
+                f.write(r"""\documentclass{article}
+                            \usepackage{array}
+                            \usepackage{graphicx}
+                            \begin{document}
+                            \thispagestyle{empty}
+                            """ + latex_code + r"""
+                            \end{document}""")
+            
+            # Compile the LaTeX file to generate a PDF
+            subprocess.call(["pdflatex", "-interaction=nonstopmode", temp_tex_filename])
+            
+            # Convert the generated PDF to an image
+            pages = convert_from_path(temp_tex_filename.replace(".tex", ".pdf"))
+            if pages:
+                page = pages[0]
+                img = ImageTk.PhotoImage(page)
+
+                # Display the image
+                preview_label = ttk.Label(self.scrollable_frame, image=img)
+                preview_label.image = img
+                preview_label.pack(padx=5, pady=5)
+
+                # Clean up temporary files
+                os.remove(temp_tex_filename)
+                os.remove(temp_tex_filename.replace(".tex", ".pdf"))
+            else:
+                messagebox.showerror("Rendering Error", "Failed to render LaTeX table.")
+        else:
+            # Render as text with matplotlib (for symbols and equations)
+            fig, ax = plt.subplots()
+            ax.text(0.5, 0.5, latex_code, fontsize=12, ha='center', va='center')
+            ax.axis('off')
+
+            buffer = BytesIO()
+            fig.savefig(buffer, format='png')
+            plt.close(fig)
+            buffer.seek(0)
+
+            img = ImageTk.PhotoImage(data=buffer.read())
+
+            # Add the new preview image
+            preview_label = ttk.Label(self.scrollable_frame, image=img)
+            preview_label.image = img
+            preview_label.pack(padx=5, pady=5)
+
 if __name__ == "__main__":
     root = tk.Tk()
     app = LatexGenerator(root)
