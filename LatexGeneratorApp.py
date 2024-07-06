@@ -5,9 +5,6 @@ from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 from io import BytesIO
 from PIL import Image, ImageTk
-import subprocess
-from pdf2image import convert_from_path
-import os
 
 class LatexGenerator:
     def __init__(self, root):
@@ -19,7 +16,7 @@ class LatexGenerator:
         self.configure_styles()
 
         # Configure grid layout
-        self.root.grid_rowconfigure(0, weight=0)  # Input area
+        self.root.grid_rowconfigure(0, weight=1)  # Input area
         self.root.grid_rowconfigure(1, weight=1)  # Tabs
         self.root.grid_rowconfigure(2, weight=0)  # Generate button
         self.root.grid_columnconfigure(0, weight=1)
@@ -28,6 +25,10 @@ class LatexGenerator:
         # Input area for LaTeX code
         self.input_area = scrolledtext.ScrolledText(self.root, width=50, height=8, bg='#444444', fg='white', insertbackground='white', font=("Helvetica", 10))
         self.input_area.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky='nsew')
+        self.input_scrollbar = Scrollbar(self.root, command=self.input_area.yview)
+        self.input_scrollbar.grid(row=0, column=1, sticky='nse')
+
+        self.input_area.config(yscrollcommand=self.input_scrollbar.set)
 
         # Create notebook (tabbed interface)
         self.notebook = ttk.Notebook(self.root)
@@ -252,59 +253,25 @@ class LatexGenerator:
         """
         Render LaTeX code and display it as an image.
         """
+        fig, ax = plt.subplots()
+        ax.text(0.5, 0.5, latex_code, fontsize=12, ha='center', va='center')
+        ax.axis('off')
+    
+        buffer = BytesIO()
+        fig.savefig(buffer, format='png')
+        plt.close(fig)
+        buffer.seek(0)
+    
+        img = ImageTk.PhotoImage(data=buffer.read())
+    
         # Clear previous content
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
-
-        # Check if the code contains a table environment
-        if latex_code.strip().startswith("\\begin{tabular}") and latex_code.strip().endswith("\\end{tabular}"):
-            # Create a temporary LaTeX file with the provided content
-            temp_tex_filename = "temp.tex"
-            with open(temp_tex_filename, 'w') as f:
-                f.write(r"""\documentclass{article}
-                            \usepackage{array}
-                            \usepackage{graphicx}
-                            \begin{document}
-                            \thispagestyle{empty}
-                            """ + latex_code + r"""
-                            \end{document}""")
-            
-            # Compile the LaTeX file to generate a PDF
-            subprocess.call(["pdflatex", "-interaction=nonstopmode", temp_tex_filename])
-            
-            # Convert the generated PDF to an image
-            pages = convert_from_path(temp_tex_filename.replace(".tex", ".pdf"))
-            if pages:
-                page = pages[0]
-                img = ImageTk.PhotoImage(page)
-
-                # Display the image
-                preview_label = ttk.Label(self.scrollable_frame, image=img)
-                preview_label.image = img
-                preview_label.pack(padx=5, pady=5)
-
-                # Clean up temporary files
-                os.remove(temp_tex_filename)
-                os.remove(temp_tex_filename.replace(".tex", ".pdf"))
-            else:
-                messagebox.showerror("Rendering Error", "Failed to render LaTeX table.")
-        else:
-            # Render as text with matplotlib (for symbols and equations)
-            fig, ax = plt.subplots()
-            ax.text(0.5, 0.5, latex_code, fontsize=12, ha='center', va='center')
-            ax.axis('off')
-
-            buffer = BytesIO()
-            fig.savefig(buffer, format='png')
-            plt.close(fig)
-            buffer.seek(0)
-
-            img = ImageTk.PhotoImage(data=buffer.read())
-
-            # Add the new preview image
-            preview_label = ttk.Label(self.scrollable_frame, image=img)
-            preview_label.image = img
-            preview_label.pack(padx=5, pady=5)
+    
+        # Add the new preview image
+        preview_label = ttk.Label(self.scrollable_frame, image=img)
+        preview_label.image = img
+        preview_label.pack(padx=5, pady=5)
 
 if __name__ == "__main__":
     root = tk.Tk()
