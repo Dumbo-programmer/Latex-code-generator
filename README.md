@@ -1,5 +1,6 @@
 ##  Latex-code-generator
-Still underdev
+Still underdev.
+
 Issues to be resolved: 
 
  - Table function
