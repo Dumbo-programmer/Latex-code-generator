@@ -334,7 +334,113 @@ class LatexGenerator:
             preview_label.image = img
             preview_label.pack(padx=5, pady=5)
 
+            f.write("\\documentclass{standalone}\n\\usepackage{amsmath, amssymb}\n\\begin{document}\n")
+            f.write(latex_code)
+            f.write("\n\\end{document}")
+
+            # Compile the LaTeX code to a PDF using pdflatex
+            command = ['pdflatex', '-interaction=nonstopmode', temp_tex_filename]
+            process = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            if process.returncode != 0:
+                raise Exception("Error in LaTeX compilation")
+
+            # Convert the PDF to images
+            pdf_path = temp_tex_filename.replace('.tex', '.pdf')
+            images = convert_from_path(pdf_path)
+
+            # Display the images in the preview area
+            for img in images:
+                img = img.resize((img.width, img.height), Image.ANTIALIAS)
+                img = ImageTk.PhotoImage(img)
+                label = ttk.Label(self.scrollable_frame, image=img)
+                label.image = img  # Keep a reference to avoid garbage collection
+                label.pack(pady=5)
+
+            # Cleanup temporary files
+            os.remove(temp_tex_filename)
+            os.remove(pdf_path)
+            for aux_file in ['temp.aux', 'temp.log']:
+                if os.path.exists(aux_file):
+                    os.remove(aux_file)
+
+            else:
+             # For other LaTeX code, render using matplotlib (e.g., equations)
+               fig = Figure(figsize=(5, 2))
+               ax = fig.add_subplot(111)
+               ax.text(0.5, 0.5, latex_code, fontsize=15, va='center', ha='center')
+               ax.axis('off')
+   
+               canvas = FigureCanvasTkAgg(fig, master=self.scrollable_frame)
+               canvas.draw()
+               canvas.get_tk_widget().pack()
+ 
+    def on_closing(self):
+        """
+        Handle the application closing event.
+        """
+        if messagebox.askokcancel("Quit", "Do you want to quit?"):
+            self.root.destroy()
+    def render_latex(self, latex_code):
+        """
+        Render LaTeX code and display it as an image.
+        """
+        # Clear previous content
+        for widget in self.scrollable_frame.winfo_children():
+            widget.destroy()
+
+        # Check if the code contains a table environment
+        if latex_code.strip().startswith("\\begin{tabular}") and latex_code.strip().endswith("\\end{tabular}"):
+            # Create a temporary LaTeX file with the provided content
+            temp_tex_filename = "temp.tex"
+            with open(temp_tex_filename, 'w') as f:
+                f.write("\\documentclass{standalone}\n\\usepackage{amsmath}\n\\begin{document}\n")
+                f.write(latex_code)
+                f.write("\n\\end{document}")
+
+            try:
+                # Compile the LaTeX file to PDF
+                subprocess.run(["pdflatex", "-interaction=nonstopmode", temp_tex_filename], check=True)
+
+                # Convert the generated PDF to an image
+                temp_pdf_filename = temp_tex_filename.replace(".tex", ".pdf")
+                images = convert_from_path(temp_pdf_filename)
+
+                for img in images:
+                    img_byte_arr = BytesIO()
+                    img.save(img_byte_arr, format='PNG')
+                    img_byte_arr = img_byte_arr.getvalue()
+                    img = Image.open(BytesIO(img_byte_arr))
+                    img.thumbnail((800, 800), Image.ANTIALIAS)
+                    img_tk = ImageTk.PhotoImage(img)
+
+                    label = tk.Label(self.scrollable_frame, image=img_tk, bg='#444444')
+                    label.image = img_tk
+                    label.pack(padx=10, pady=10)
+
+                # Clean up temporary files
+                os.remove(temp_tex_filename)
+                os.remove(temp_pdf_filename)
+                for aux_file in ("temp.aux", "temp.log"):
+                    if os.path.exists(aux_file):
+                        os.remove(aux_file)
+
+            except subprocess.CalledProcessError as e:
+                print(f"Error in LaTeX compilation: {e}")
+                messagebox.showerror("Compilation Error", "Failed to compile LaTeX code.")
+        else:
+            # For non-table environments, display using matplotlib
+            fig = Figure(figsize=(5, 5))
+            ax = fig.add_subplot(111)
+            ax.text(0.5, 0.5, latex_code, fontsize=12, va='center', ha='center')
+            ax.axis('off')
+
+            canvas = FigureCanvasTkAgg(fig, master=self.scrollable_frame)
+            canvas.draw()
+            canvas.get_tk_widget().pack(padx=10, pady=10)
+
 if __name__ == "__main__":
     root = tk.Tk()
     app = LatexGenerator(root)
+    root.protocol("WM_DELETE_WINDOW", app.on_closing)
     root.mainloop()
