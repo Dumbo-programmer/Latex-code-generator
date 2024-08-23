@@ -7,7 +7,7 @@ Tabbed Interface: Switch between different tabs for common LaTeX objects and mat
 Generate and Preview: Instantly generate a preview of your LaTeX code to see how it will appear when rendered.
 ### Res:
 ![Gen](https://github.com/Dumbo-programmer/Latex-code-generator/blob/main/screenshot.png?raw=true)
-![](https://github.com/Dumbo-programmer/Latex-code-generator/blob/main/Recording.mp4)
+https://github.com/Dumbo-programmer/Latex-code-generator/blob/main/Recording.mp4
 
 ## Save Your Work: Save your LaTeX code as a .tex file directly from the application, making it easy to continue working on your projects later.
 Scrollable Preview: The preview section includes scrollbars, allowing you to comfortably view even large or complex LaTeX code.
